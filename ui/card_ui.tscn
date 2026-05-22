@@ -1,0 +1,31 @@
+[gd_scene load_steps=2 format=3 uid="uid://b7bf1lqomped2"]
+
+[ext_resource type="Script" path="res://ui/card_ui.gd" id="1_wqvmj"]
+
+[node name="CardUi" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_wqvmj")
+
+[node name="Artwork" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 120.0
+offset_bottom = 120.0
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Stats" type="Label" parent="."]
+layout_mode = 0
+offset_top = 130.0
+offset_right = 120.0
+offset_bottom = 270.0
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[connection signal="mouse_entered" from="." to="." method="_on_mouse_entered"]
+[connection signal="mouse_exited" from="." to="." method="_on_mouse_exited"]

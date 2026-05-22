@@ -1,0 +1,109 @@
+extends RefCounted
+class_name EffectResolver
+
+const EFFECT_SCRIPT: Script = preload("res://scripts/effects/effect.gd")
+const CARD_NAME_KEY: StringName = &"name"
+
+var _draw_cards_by_name: Dictionary = {
+    "pot of greed": 2,
+    "graceful charity": 3,
+}
+
+var _damage_by_name: Dictionary = {
+    "ookazi": 800,
+    "tremendous fire": 1000,
+    "just desserts": 500,
+}
+
+var _gain_lp_by_name: Dictionary = {
+    "goblin thief": 500,
+}
+
+func create_effect_for_card(card_instance: CardInstance, source_action: StringName) -> RefCounted:
+    var effect: Effect = EFFECT_SCRIPT.new() as Effect
+    if card_instance == null:
+        effect.setup(null, source_action, Effect.OP_NONE)
+        return effect
+
+    var card_name: String = str(card_instance.card_data.get(CARD_NAME_KEY, "")).to_lower()
+
+    if _draw_cards_by_name.has(card_name):
+        var draw_count: int = int(_draw_cards_by_name[card_name])
+        effect.setup(card_instance, source_action, Effect.OP_DRAW_OWNER, draw_count)
+        return effect
+
+    if card_name == "fissure" or card_name == "smashing ground":
+        effect.setup(card_instance, source_action, Effect.OP_DESTROY_ONE_OPPONENT_MONSTER, 1)
+        return effect
+
+    if card_name == "dark hole" or card_name == "raigeki":
+        effect.setup(card_instance, source_action, Effect.OP_DESTROY_ALL_MONSTERS, 0)
+        return effect
+
+    if _damage_by_name.has(card_name):
+        var damage_amount: int = int(_damage_by_name[card_name])
+        effect.setup(card_instance, source_action, Effect.OP_DAMAGE_OPPONENT, damage_amount)
+        return effect
+
+    if _gain_lp_by_name.has(card_name):
+        var gain_amount: int = int(_gain_lp_by_name[card_name])
+        effect.setup(card_instance, source_action, Effect.OP_GAIN_LP_OWNER, gain_amount)
+        return effect
+
+    effect.setup(card_instance, source_action, Effect.OP_NONE)
+    return effect
+
+func resolve_effect(effect_ref: RefCounted, duel_manager: Node) -> bool:
+    var effect: Effect = effect_ref as Effect
+    if effect == null or duel_manager == null:
+        return false
+
+    var card_instance: CardInstance = effect.card_instance
+    if card_instance == null:
+        return false
+
+    if not duel_manager.is_card_still_on_field(card_instance):
+        return false
+
+    if effect.operation == Effect.OP_DRAW_OWNER:
+        return duel_manager.draw_cards_for_owner(card_instance.owner, effect.amount)
+
+    if effect.operation == Effect.OP_DAMAGE_OPPONENT:
+        var opponent_owner: int = duel_manager.get_opponent_owner(card_instance.owner)
+        duel_manager.apply_life_point_damage(opponent_owner, effect.amount)
+        return true
+
+    if effect.operation == Effect.OP_GAIN_LP_OWNER:
+        duel_manager.gain_life_points(card_instance.owner, effect.amount)
+        return true
+
+    if effect.operation == Effect.OP_DESTROY_ONE_OPPONENT_MONSTER:
+        var target: CardInstance = duel_manager.get_first_monster_for_owner(duel_manager.get_opponent_owner(card_instance.owner))
+        if target == null:
+            return false
+        return duel_manager.destroy_card_instance(target, &"effect")
+
+    if effect.operation == Effect.OP_DESTROY_ALL_MONSTERS:
+        var all_monsters: Array[CardInstance] = duel_manager.get_all_field_monsters()
+        var destroyed_any: bool = false
+        for monster: CardInstance in all_monsters:
+            if monster == null:
+                continue
+            if duel_manager.destroy_card_instance(monster, &"effect"):
+                destroyed_any = true
+        return destroyed_any
+
+    return true
+
+func should_send_to_grave_after_resolve(card_instance: CardInstance) -> bool:
+    if card_instance == null:
+        return false
+    if not card_instance.is_spell_or_trap():
+        return false
+
+    return not card_instance.is_persistent_spell_trap()
+
+func get_activation_speed(card_instance: CardInstance) -> int:
+    if card_instance == null:
+        return 0
+    return card_instance.get_spell_speed()

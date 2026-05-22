@@ -1,0 +1,538 @@
+extends Node
+class_name DuelManager
+
+const CARD_UI_SCENE: PackedScene = preload("res://ui/card_ui.tscn")
+
+# --- FIELD LAYOUT ---
+const PLAYER_MONSTER_ZONE_PREFIX: String = "PlayerMonster"
+const PLAYER_SPELL_ZONE_PREFIX: String = "PlayerSpell"
+const PLAYER_MONSTER_ZONE_COUNT: int = 5
+const PLAYER_SPELL_ZONE_COUNT: int = 5
+
+# --- ACTION CONSTANTS ---
+const ACTION_NORMAL_SUMMON: StringName = &"normal_summon"
+const ACTION_SET_MONSTER: StringName = &"set_monster"
+const ACTION_ACTIVATE_SPELL: StringName = &"activate_spell"
+const ACTION_SET_SPELL: StringName = &"set_spell"
+const ACTION_POS_CHANGE: StringName = &"position_change"
+const ACTION_FLIP_SUMMON: StringName = &"flip_summon"
+
+# --- PHASE CONSTANTS ---
+const PHASE_DRAW: StringName = &"DRAW"
+const PHASE_MAIN_1: StringName = &"MAIN1"
+const PHASE_BATTLE: StringName = &"BATTLE"
+const PHASE_MAIN_2: StringName = &"MAIN2"
+const PHASE_END: StringName = &"END"
+
+# --- CORE ZONE KEYS ---
+const ZONE_KEY_DECK: StringName = &"deck"
+const ZONE_KEY_HAND: StringName = &"hand"
+const ZONE_KEY_MONSTER: StringName = &"monster"
+const ZONE_KEY_SPELL_TRAP: StringName = &"spell_trap"
+const ZONE_KEY_GRAVEYARD: StringName = &"graveyard"
+const ZONE_KEY_BANISHED: StringName = &"banished"
+const ZONE_KEY_EXTRA: StringName = &"extra"
+const ZONE_KEY_FLAGS: StringName = &"flags"
+
+# --- SCENE ZONES ---
+var zones: Dictionary = {}
+var player_zones: Dictionary = {}
+var enemy_zones: Dictionary = {}
+
+# --- DUEL STATE ---
+var player_state: Dictionary = {}
+var enemy_state: Dictionary = {}
+var card_instances_by_ui_id: Dictionary = {}
+
+# --- MANAGERS ---
+var phase_manager: PhaseManager = null
+var turn_manager: TurnManager = null
+var card_database: GoatCarddatabase = null
+
+var current_phase: StringName = PHASE_DRAW
+var is_player_turn: bool = true
+
+signal phase_changed(phase: StringName, player_turn: bool)
+
+func _ready() -> void:
+    await get_tree().process_frame
+
+    phase_manager = get_node_or_null("../PhaseManager") as PhaseManager
+    turn_manager = get_node_or_null("../TurnManager") as TurnManager
+    card_database = get_node_or_null("../CardDatabase") as GoatCarddatabase
+
+    if phase_manager == null:
+        push_error("PhaseManager nicht gefunden.")
+        return
+    if turn_manager == null:
+        push_error("TurnManager nicht gefunden.")
+        return
+    if card_database == null:
+        push_error("CardDatabase nicht gefunden.")
+        return
+
+    _initialize_duel_state()
+
+func _initialize_duel_state() -> void:
+    player_state = _create_duelist_state(CardInstance.Owner.PLAYER)
+    enemy_state = _create_duelist_state(CardInstance.Owner.ENEMY)
+
+    _build_deck_for_state(player_state)
+    _build_deck_for_state(enemy_state)
+
+    _draw_cards(player_state, 5, true)
+    _draw_cards(enemy_state, 5, false)
+
+    turn_manager.start_duel(TurnManager.OWNER_PLAYER)
+    is_player_turn = turn_manager.is_player_turn()
+
+    _start_turn_draw_step()
+
+func _create_duelist_state(owner: int) -> Dictionary:
+    var monster_slots: Array[Variant] = []
+    var spell_slots: Array[Variant] = []
+    var index: int = 0
+
+    for i: int in range(PLAYER_MONSTER_ZONE_COUNT):
+        monster_slots.append(null)
+    for j: int in range(PLAYER_SPELL_ZONE_COUNT):
+        spell_slots.append(null)
+
+    var state: Dictionary = {
+        "owner": owner,
+        ZONE_KEY_DECK: [],
+        ZONE_KEY_HAND: [],
+        ZONE_KEY_MONSTER: monster_slots,
+        ZONE_KEY_SPELL_TRAP: spell_slots,
+        ZONE_KEY_GRAVEYARD: [],
+        ZONE_KEY_BANISHED: [],
+        ZONE_KEY_EXTRA: [],
+        ZONE_KEY_FLAGS: {
+            "normal_summon_used": false,
+        },
+    }
+
+    index += 1
+    return state
+
+func _build_deck_for_state(state: Dictionary) -> void:
+    var all_ids: Array = card_database.cards.keys()
+    all_ids.shuffle()
+
+    var deck_cards: Array = state[ZONE_KEY_DECK] as Array
+    deck_cards.clear()
+
+    var owner: int = int(state.get("owner", CardInstance.Owner.PLAYER))
+    var max_cards: int = mini(40, all_ids.size())
+    var idx: int = 0
+
+    for i: int in range(max_cards):
+        idx = int(all_ids[i])
+        var card_data: Variant = card_database.get_card_by_id(idx)
+        if card_data == null or not (card_data is Dictionary):
+            continue
+
+        var instance: CardInstance = CardInstance.new()
+        instance.setup(card_data as Dictionary, owner, CardInstance.Zone.DECK)
+        deck_cards.append(instance)
+
+func _draw_cards(state: Dictionary, amount: int, spawn_player_ui: bool) -> void:
+    for i: int in range(amount):
+        _draw_one_card(state, spawn_player_ui)
+
+func _draw_one_card(state: Dictionary, spawn_player_ui: bool) -> CardInstance:
+    var deck_cards: Array = state[ZONE_KEY_DECK] as Array
+    if deck_cards.is_empty():
+        return null
+
+    var drawn_card: CardInstance = deck_cards.pop_back() as CardInstance
+    if drawn_card == null:
+        return null
+
+    var hand_cards: Array = state[ZONE_KEY_HAND] as Array
+    hand_cards.append(drawn_card)
+    drawn_card.set_zone(CardInstance.Zone.HAND)
+    drawn_card.face_up = true
+
+    if spawn_player_ui and int(state.get("owner", -1)) == CardInstance.Owner.PLAYER:
+        _spawn_player_hand_card_ui(drawn_card)
+
+    return drawn_card
+
+func _spawn_player_hand_card_ui(card_instance: CardInstance) -> void:
+    var hand_zone: Control = zones.get("PlayerHand") as Control
+    if hand_zone == null:
+        push_warning("PlayerHand Zone fehlt.")
+        return
+
+    var card_ui: CardUI = CARD_UI_SCENE.instantiate() as CardUI
+    card_ui.set_card(card_instance.card_data)
+    hand_zone.add_child(card_ui)
+
+    card_instances_by_ui_id[card_ui.get_instance_id()] = card_instance
+    _sync_card_ui_from_instance(card_ui, card_instance)
+    _layout_player_hand()
+
+func _layout_player_hand() -> void:
+    var hand_zone: Control = zones.get("PlayerHand") as Control
+    if hand_zone == null:
+        return
+
+    var child_count: int = hand_zone.get_child_count()
+    for i: int in range(child_count):
+        var card_node: CardUI = hand_zone.get_child(i) as CardUI
+        if card_node == null:
+            continue
+        card_node.position = Vector2(20.0 + float(i) * 150.0, 0.0)
+
+func _start_turn_draw_step() -> void:
+    phase_manager.start_turn()
+    set_current_phase(PHASE_DRAW)
+
+    var active_state: Dictionary = _get_active_state()
+    var should_spawn_ui: bool = is_player_turn
+    _draw_one_card(active_state, should_spawn_ui)
+
+    _reset_card_turn_flags_for_owner(_get_active_owner())
+    turn_manager.reset_turn_flags()
+
+    set_current_phase(PHASE_MAIN_1)
+
+func _get_active_owner() -> int:
+    return CardInstance.Owner.PLAYER if is_player_turn else CardInstance.Owner.ENEMY
+
+func _get_active_state() -> Dictionary:
+    return player_state if is_player_turn else enemy_state
+
+func _get_state_by_owner(owner: int) -> Dictionary:
+    return player_state if owner == CardInstance.Owner.PLAYER else enemy_state
+
+func get_current_phase() -> StringName:
+    return current_phase
+
+func set_current_phase(phase: StringName) -> void:
+    current_phase = phase
+    phase_manager.current_phase = phase
+    emit_signal("phase_changed", phase, is_player_turn)
+
+func on_next_phase_button_pressed() -> void:
+    _on_next_phase_button_pressed()
+
+func _on_next_phase_button_pressed() -> void:
+    var next_phase: StringName = PHASE_END
+
+    if current_phase == PHASE_END:
+        turn_manager.next_turn()
+        is_player_turn = turn_manager.is_player_turn()
+        _start_turn_draw_step()
+        return
+
+    next_phase = phase_manager.next_phase()
+    set_current_phase(next_phase)
+
+func register_zone(zone_name: String, zone_node: Node, is_player: bool) -> void:
+    zones[zone_name] = zone_node
+    if is_player:
+        player_zones[zone_name] = zone_node
+    else:
+        enemy_zones[zone_name] = zone_node
+
+func on_card_clicked(card_ui: CardUI) -> void:
+    var card_instance: CardInstance = _get_card_instance(card_ui)
+    if card_instance == null:
+        return
+    if card_instance.owner != CardInstance.Owner.PLAYER:
+        return
+    if not is_player_turn:
+        return
+
+    var menu: ActionMenu = get_tree().root.get_node_or_null("main/ActionMenu") as ActionMenu
+    if menu == null:
+        return
+
+    var actions: Array[StringName] = get_available_actions(card_ui)
+    menu.set_available_actions(actions)
+
+    if actions.is_empty():
+        menu.close()
+        return
+
+    menu.open(card_ui, card_ui.get_global_position() + Vector2(80.0, 0.0))
+
+func get_available_actions(card_ui: CardUI) -> Array[StringName]:
+    var actions: Array[StringName] = []
+    var card_instance: CardInstance = _get_card_instance(card_ui)
+
+    if card_instance == null:
+        return actions
+    if card_instance.owner != CardInstance.Owner.PLAYER:
+        return actions
+    if not is_player_turn:
+        return actions
+
+    if card_instance.current_zone == CardInstance.Zone.HAND:
+        if not _is_main_phase():
+            return actions
+
+        if card_instance.is_monster():
+            if turn_manager.can_normal_summon() and _has_free_monster_zone(player_state):
+                actions.append(ACTION_NORMAL_SUMMON)
+                actions.append(ACTION_SET_MONSTER)
+        elif card_instance.is_spell_or_trap() and _has_free_spell_zone(player_state):
+            actions.append(ACTION_ACTIVATE_SPELL)
+            actions.append(ACTION_SET_SPELL)
+
+    if card_instance.current_zone == CardInstance.Zone.MONSTER and _is_main_phase():
+        if card_instance.face_up:
+            if not card_instance.has_changed_battle_position_this_turn:
+                actions.append(ACTION_POS_CHANGE)
+        else:
+            if not card_instance.was_normal_summoned and not card_instance.was_special_summoned:
+                actions.append(ACTION_FLIP_SUMMON)
+
+    return actions
+
+func _is_main_phase() -> bool:
+    return current_phase == PHASE_MAIN_1 or current_phase == PHASE_MAIN_2
+
+func normal_summon(card_ui: CardUI) -> void:
+    if not _can_execute_action(card_ui, ACTION_NORMAL_SUMMON):
+        return
+
+    var card_instance: CardInstance = _get_card_instance(card_ui)
+    if card_instance == null:
+        return
+
+    var slot_index: int = _first_free_slot(player_state[ZONE_KEY_MONSTER] as Array)
+    if slot_index < 0:
+        return
+
+    _move_player_card_to_field_zone(card_ui, card_instance, CardInstance.Zone.MONSTER, slot_index)
+
+    card_instance.face_up = true
+    card_instance.battle_position = CardInstance.BattlePosition.ATTACK
+    card_instance.mark_normal_summoned()
+    card_instance.has_changed_battle_position_this_turn = true
+
+    turn_manager.use_normal_summon()
+    _set_player_flag("normal_summon_used", true)
+    _sync_card_ui_from_instance(card_ui, card_instance)
+
+func set_summon(card_ui: CardUI) -> void:
+    if not _can_execute_action(card_ui, ACTION_SET_MONSTER):
+        return
+
+    var card_instance: CardInstance = _get_card_instance(card_ui)
+    if card_instance == null:
+        return
+
+    var slot_index: int = _first_free_slot(player_state[ZONE_KEY_MONSTER] as Array)
+    if slot_index < 0:
+        return
+
+    _move_player_card_to_field_zone(card_ui, card_instance, CardInstance.Zone.MONSTER, slot_index)
+
+    card_instance.face_up = false
+    card_instance.battle_position = CardInstance.BattlePosition.DEFENSE
+    card_instance.mark_normal_summoned()
+    card_instance.has_changed_battle_position_this_turn = true
+
+    turn_manager.use_normal_summon()
+    _set_player_flag("normal_summon_used", true)
+    _sync_card_ui_from_instance(card_ui, card_instance)
+
+func activate_spell(card_ui: CardUI) -> void:
+    if not _can_execute_action(card_ui, ACTION_ACTIVATE_SPELL):
+        return
+
+    var card_instance: CardInstance = _get_card_instance(card_ui)
+    if card_instance == null:
+        return
+
+    var slot_index: int = _first_free_slot(player_state[ZONE_KEY_SPELL_TRAP] as Array)
+    if slot_index < 0:
+        return
+
+    _move_player_card_to_field_zone(card_ui, card_instance, CardInstance.Zone.SPELL_TRAP, slot_index)
+
+    card_instance.face_up = true
+    _sync_card_ui_from_instance(card_ui, card_instance)
+
+func set_spell(card_ui: CardUI) -> void:
+    if not _can_execute_action(card_ui, ACTION_SET_SPELL):
+        return
+
+    var card_instance: CardInstance = _get_card_instance(card_ui)
+    if card_instance == null:
+        return
+
+    var slot_index: int = _first_free_slot(player_state[ZONE_KEY_SPELL_TRAP] as Array)
+    if slot_index < 0:
+        return
+
+    _move_player_card_to_field_zone(card_ui, card_instance, CardInstance.Zone.SPELL_TRAP, slot_index)
+
+    card_instance.face_up = false
+    _sync_card_ui_from_instance(card_ui, card_instance)
+
+func position_change(card_ui: CardUI) -> void:
+    if not _can_execute_action(card_ui, ACTION_POS_CHANGE):
+        return
+
+    var card_instance: CardInstance = _get_card_instance(card_ui)
+    if card_instance == null:
+        return
+
+    card_instance.battle_position = CardInstance.BattlePosition.DEFENSE if card_instance.battle_position == CardInstance.BattlePosition.ATTACK else CardInstance.BattlePosition.ATTACK
+    card_instance.has_changed_battle_position_this_turn = true
+
+    _sync_card_ui_from_instance(card_ui, card_instance)
+
+func flip_summon(card_ui: CardUI) -> void:
+    if not _can_execute_action(card_ui, ACTION_FLIP_SUMMON):
+        return
+
+    var card_instance: CardInstance = _get_card_instance(card_ui)
+    if card_instance == null:
+        return
+
+    card_instance.face_up = true
+    card_instance.battle_position = CardInstance.BattlePosition.ATTACK
+    card_instance.mark_flip_summoned()
+    card_instance.has_changed_battle_position_this_turn = true
+
+    _sync_card_ui_from_instance(card_ui, card_instance)
+
+func _can_execute_action(card_ui: CardUI, action: StringName) -> bool:
+    var available_actions: Array[StringName] = get_available_actions(card_ui)
+    return available_actions.has(action)
+
+func _move_player_card_to_field_zone(card_ui: CardUI, card_instance: CardInstance, target_zone: int, slot_index: int) -> void:
+    _remove_card_from_current_zone(player_state, card_instance)
+
+    if target_zone == CardInstance.Zone.MONSTER:
+        var monster_slots: Array = player_state[ZONE_KEY_MONSTER] as Array
+        monster_slots[slot_index] = card_instance
+    elif target_zone == CardInstance.Zone.SPELL_TRAP:
+        var spell_slots: Array = player_state[ZONE_KEY_SPELL_TRAP] as Array
+        spell_slots[slot_index] = card_instance
+
+    card_instance.set_zone(target_zone, slot_index)
+    _move_card_ui_to_zone(card_ui, target_zone, slot_index)
+
+func _remove_card_from_current_zone(state: Dictionary, card_instance: CardInstance) -> void:
+    if card_instance.current_zone == CardInstance.Zone.HAND:
+        var hand_cards: Array = state[ZONE_KEY_HAND] as Array
+        hand_cards.erase(card_instance)
+        return
+
+    if card_instance.current_zone == CardInstance.Zone.MONSTER:
+        var monster_slots: Array = state[ZONE_KEY_MONSTER] as Array
+        if card_instance.zone_slot_index >= 0 and card_instance.zone_slot_index < monster_slots.size():
+            monster_slots[card_instance.zone_slot_index] = null
+        return
+
+    if card_instance.current_zone == CardInstance.Zone.SPELL_TRAP:
+        var spell_slots: Array = state[ZONE_KEY_SPELL_TRAP] as Array
+        if card_instance.zone_slot_index >= 0 and card_instance.zone_slot_index < spell_slots.size():
+            spell_slots[card_instance.zone_slot_index] = null
+
+func _move_card_ui_to_zone(card_ui: CardUI, target_zone: int, slot_index: int) -> void:
+    var target_zone_node: Control = _get_player_zone_node_for(target_zone, slot_index)
+    if target_zone_node == null:
+        return
+
+    var previous_parent: Node = card_ui.get_parent()
+    if previous_parent != null:
+        previous_parent.remove_child(card_ui)
+
+    target_zone_node.add_child(card_ui)
+    card_ui.position = Vector2.ZERO
+
+    if target_zone == CardInstance.Zone.HAND:
+        _layout_player_hand()
+
+func _get_player_zone_node_for(zone: int, slot_index: int) -> Control:
+    if zone == CardInstance.Zone.HAND:
+        return zones.get("PlayerHand") as Control
+    if zone == CardInstance.Zone.MONSTER:
+        var monster_zone_name: String = "%s%d" % [PLAYER_MONSTER_ZONE_PREFIX, slot_index + 1]
+        return zones.get(monster_zone_name) as Control
+    if zone == CardInstance.Zone.SPELL_TRAP:
+        var spell_zone_name: String = "%s%d" % [PLAYER_SPELL_ZONE_PREFIX, slot_index + 1]
+        return zones.get(spell_zone_name) as Control
+    if zone == CardInstance.Zone.GRAVEYARD:
+        return zones.get("PlayerGY") as Control
+    if zone == CardInstance.Zone.BANISHED:
+        return zones.get("PlayerBanished") as Control
+    if zone == CardInstance.Zone.EXTRA:
+        return zones.get("PlayerExtra") as Control
+    return null
+
+func _sync_card_ui_from_instance(card_ui: CardUI, card_instance: CardInstance) -> void:
+    card_ui.set_face_up(card_instance.face_up)
+
+    if card_instance.battle_position == CardInstance.BattlePosition.ATTACK:
+        card_ui.set_attack_position()
+    else:
+        card_ui.set_defense_position()
+
+    card_ui.update_stats()
+
+func _get_card_instance(card_ui: CardUI) -> CardInstance:
+    if card_ui == null:
+        return null
+
+    var ui_id: int = card_ui.get_instance_id()
+    if not card_instances_by_ui_id.has(ui_id):
+        return null
+
+    return card_instances_by_ui_id[ui_id] as CardInstance
+
+func _first_free_slot(slots: Array) -> int:
+    var i: int = 0
+    for index: int in range(slots.size()):
+        if slots[index] == null:
+            i = index
+            return i
+    return -1
+
+func _has_free_monster_zone(state: Dictionary) -> bool:
+    var monster_slots: Array = state[ZONE_KEY_MONSTER] as Array
+    return _first_free_slot(monster_slots) >= 0
+
+func _has_free_spell_zone(state: Dictionary) -> bool:
+    var spell_slots: Array = state[ZONE_KEY_SPELL_TRAP] as Array
+    return _first_free_slot(spell_slots) >= 0
+
+func _set_player_flag(flag_name: String, flag_value: bool) -> void:
+    var flags: Dictionary = player_state[ZONE_KEY_FLAGS] as Dictionary
+    flags[flag_name] = flag_value
+
+func _reset_card_turn_flags_for_owner(owner: int) -> void:
+    var state: Dictionary = _get_state_by_owner(owner)
+
+    var hand_cards: Array = state[ZONE_KEY_HAND] as Array
+    var deck_cards: Array = state[ZONE_KEY_DECK] as Array
+    var gy_cards: Array = state[ZONE_KEY_GRAVEYARD] as Array
+    var banished_cards: Array = state[ZONE_KEY_BANISHED] as Array
+    var extra_cards: Array = state[ZONE_KEY_EXTRA] as Array
+    var monster_slots: Array = state[ZONE_KEY_MONSTER] as Array
+    var spell_slots: Array = state[ZONE_KEY_SPELL_TRAP] as Array
+
+    _reset_card_array_turn_flags(hand_cards)
+    _reset_card_array_turn_flags(deck_cards)
+    _reset_card_array_turn_flags(gy_cards)
+    _reset_card_array_turn_flags(banished_cards)
+    _reset_card_array_turn_flags(extra_cards)
+    _reset_card_array_turn_flags(monster_slots)
+    _reset_card_array_turn_flags(spell_slots)
+
+func _reset_card_array_turn_flags(card_array: Array) -> void:
+    for item: Variant in card_array:
+        if item == null:
+            continue
+        var card_instance: CardInstance = item as CardInstance
+        if card_instance == null:
+            continue
+        card_instance.reset_turn_temporary_flags()

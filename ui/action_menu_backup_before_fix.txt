@@ -1,0 +1,30 @@
+extends Control
+class_name ActionMenu
+
+var target_card
+
+func open(card, pos: Vector2):
+    target_card = card
+    position = pos
+    visible = true
+
+func close():
+    visible = false
+    target_card = null
+
+
+func _on_NormalButton_pressed():
+    get_tree().root.get_node("main/DuelManager").normal_summon(target_card)
+    close()
+
+func _on_SetButton_pressed():
+    get_tree().root.get_node("main/DuelManager").set_summon(target_card)
+    close()
+
+func _on_ActivateButton_pressed():
+    get_tree().root.get_node("main/DuelManager").activate_spell(target_card)
+    close()
+
+func _on_SetSpellButton_pressed():
+    get_tree().root.get_node("main/DuelManager").set_spell(target_card)
+    close()

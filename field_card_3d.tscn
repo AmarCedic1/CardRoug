@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3 uid="uid://dgo11yui4sta8"]
+
+[ext_resource type="Script" path="res://field_card_3d.gd" id="1_bf87n"]
+[ext_resource type="Texture2D" uid="uid://dd1ofk2ckbchl" path="res://cards/GOAT/32864.jpg" id="1_svuq2"]
+
+[node name="Fieldcard3D" type="Node2D"]
+position = Vector2(1, 0)
+scale = Vector2(0.85, 0.74)
+skew = 0.0226893
+script = ExtResource("1_bf87n")
+
+[node name="ShadowSprite" type="Sprite2D" parent="."]
+modulate = Color(0.219608, 0.219608, 0.219608, 1)
+position = Vector2(8, 10)
+
+[node name="CardSprite" type="Sprite2D" parent="."]
+position = Vector2(8, 10)
+texture = ExtResource("1_svuq2")

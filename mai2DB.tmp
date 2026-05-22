@@ -1,0 +1,420 @@
+[gd_scene load_steps=10 format=3 uid="uid://cv16ehnkiry5e"]
+
+[ext_resource type="Texture2D" uid="uid://dt5myje6ex1x5" path="res://assets/generated/tagforce_style_bg_v3_1920x1080.png" id="1_bg"]
+[ext_resource type="Texture2D" uid="uid://bsel6am53ruwn" path="res://art/Board/board_zone_overlay2.png" id="2_board"]
+[ext_resource type="Script" path="res://scripts/zones/zone_visual.gd" id="3_zonevisual"]
+[ext_resource type="Script" path="res://ui/action_menu.gd" id="4_aymr5"]
+[ext_resource type="Script" path="res://ui/hover_preview.gd" id="4_c3b28"]
+[ext_resource type="Script" path="res://scripts/duel/duel_manager.gd" id="4_duel"]
+[ext_resource type="Script" path="res://scripts/cards/GoatCarddatabase.gd" id="5_db"]
+[ext_resource type="Script" path="res://scripts/duel/PhaseManager.gd" id="8_g7aug"]
+[ext_resource type="Script" path="res://scripts/duel/TurnManager.gd" id="9_4erxn"]
+
+[node name="main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("1_bg")
+stretch_mode = 6
+
+[node name="Board" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_board")
+stretch_mode = 6
+
+[node name="ZoneLayer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EnemySpell1" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 470.0
+offset_top = 203.0
+offset_right = 630.0
+offset_bottom = 295.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemySpell2" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 673.0
+offset_top = 204.0
+offset_right = 833.0
+offset_bottom = 296.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemySpell3" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 878.0
+offset_top = 182.0
+offset_right = 1038.0
+offset_bottom = 274.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemySpell4" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1087.0
+offset_top = 203.0
+offset_right = 1247.0
+offset_bottom = 295.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemySpell5" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1295.0
+offset_top = 210.0
+offset_right = 1455.0
+offset_bottom = 302.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemyMonster1" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 437.0
+offset_top = 342.0
+offset_right = 597.0
+offset_bottom = 434.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemyMonster2" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 662.0
+offset_top = 342.0
+offset_right = 822.0
+offset_bottom = 434.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemyMonster3" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 878.0
+offset_top = 346.0
+offset_right = 1038.0
+offset_bottom = 438.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemyMonster4" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1100.0
+offset_top = 339.0
+offset_right = 1260.0
+offset_bottom = 431.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemyMonster5" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1321.0
+offset_top = 339.0
+offset_right = 1481.0
+offset_bottom = 431.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerMonster1" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 384.0
+offset_top = 560.0
+offset_right = 544.0
+offset_bottom = 652.0
+rotation = 0.0349066
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerMonster2" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 630.0
+offset_top = 560.0
+offset_right = 790.0
+offset_bottom = 652.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerMonster3" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 880.0
+offset_top = 560.0
+offset_right = 1040.0
+offset_bottom = 652.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerMonster4" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1123.0
+offset_top = 560.0
+offset_right = 1283.0
+offset_bottom = 652.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerMonster5" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1373.0
+offset_top = 560.0
+offset_right = 1533.0
+offset_bottom = 652.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerSpell1" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 351.0
+offset_top = 798.0
+offset_right = 511.0
+offset_bottom = 890.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerSpell2" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 633.0
+offset_top = 789.0
+offset_right = 793.0
+offset_bottom = 881.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerSpell3" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 869.0
+offset_top = 797.0
+offset_right = 1029.0
+offset_bottom = 889.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerSpell4" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1151.0
+offset_top = 806.0
+offset_right = 1311.0
+offset_bottom = 898.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerSpell5" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1422.0
+offset_top = 808.0
+offset_right = 1582.0
+offset_bottom = 900.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemyDeck" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 315.0
+offset_top = 132.0
+offset_right = 425.0
+offset_bottom = 237.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemyExtra" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1508.0
+offset_top = 137.0
+offset_right = 1618.0
+offset_bottom = 242.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemyGY" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 263.0
+offset_top = 267.0
+offset_right = 373.0
+offset_bottom = 372.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemyBanished" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 219.0
+offset_top = 409.0
+offset_right = 329.0
+offset_bottom = 514.0
+script = ExtResource("3_zonevisual")
+
+[node name="EnemyField" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1538.0
+offset_top = 268.0
+offset_right = 1648.0
+offset_bottom = 373.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerGY" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1693.0
+offset_top = 687.0
+offset_right = 1803.0
+offset_bottom = 792.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerField" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 127.0
+offset_top = 661.0
+offset_right = 237.0
+offset_bottom = 766.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerExtra" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 36.0
+offset_top = 882.0
+offset_right = 146.0
+offset_bottom = 987.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerBanished" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1624.0
+offset_top = 492.0
+offset_right = 1734.0
+offset_bottom = 597.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerDeck" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 1760.0
+offset_top = 891.0
+offset_right = 1870.0
+offset_bottom = 996.0
+script = ExtResource("3_zonevisual")
+
+[node name="PlayerHand" type="Control" parent="ZoneLayer"]
+anchors_preset = 0
+offset_left = 620.0
+offset_top = 900.0
+offset_right = 1620.0
+offset_bottom = 1060.0
+script = ExtResource("3_zonevisual")
+
+[node name="HoverPreviewPanel" type="Control" parent="."]
+visible = false
+anchors_preset = 0
+offset_left = 20.0
+offset_top = 200.0
+offset_right = 370.0
+offset_bottom = 700.0
+script = ExtResource("4_c3b28")
+
+[node name="Artwork" type="TextureRect" parent="HoverPreviewPanel"]
+layout_mode = 0
+offset_right = 350.0
+offset_bottom = 400.0
+expand_mode = 5
+stretch_mode = 5
+
+[node name="Name" type="Label" parent="HoverPreviewPanel"]
+layout_mode = 0
+offset_right = 350.0
+offset_bottom = 30.0
+horizontal_alignment = 1
+
+[node name="Stats" type="Label" parent="HoverPreviewPanel"]
+layout_mode = 0
+offset_top = 430.0
+offset_right = 350.0
+offset_bottom = 455.0
+horizontal_alignment = 1
+
+[node name="Effect" type="Label" parent="HoverPreviewPanel"]
+layout_mode = 0
+offset_top = 400.0
+offset_right = 350.0
+offset_bottom = 520.0
+autowrap_mode = 3
+
+[node name="ActionMenu" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 0
+offset_right = 200.0
+offset_bottom = 200.0
+script = ExtResource("4_aymr5")
+
+[node name="NormalButton" type="Button" parent="ActionMenu"]
+layout_mode = 0
+offset_right = 180.0
+offset_bottom = 40.0
+text = "Normal Summon"
+
+[node name="SetButton" type="Button" parent="ActionMenu"]
+layout_mode = 0
+offset_top = 45.0
+offset_right = 180.0
+offset_bottom = 85.0
+text = "Set"
+
+[node name="ActivateButton" type="Button" parent="ActionMenu"]
+layout_mode = 0
+offset_top = 90.0
+offset_right = 180.0
+offset_bottom = 130.0
+text = "Activate"
+
+[node name="SetSpellButton" type="Button" parent="ActionMenu"]
+layout_mode = 0
+offset_top = 135.0
+offset_right = 180.0
+offset_bottom = 175.0
+text = "Set"
+
+[node name="PosChangeButton" type="Button" parent="ActionMenu"]
+layout_mode = 0
+offset_top = 180.0
+offset_right = 180.0
+offset_bottom = 220.0
+text = "Position Change"
+
+[node name="FlipSummonButton" type="Button" parent="ActionMenu"]
+layout_mode = 0
+offset_top = 225.0
+offset_right = 180.0
+offset_bottom = 265.0
+text = "FlipSummon
+"
+
+[node name="AttackButton" type="Button" parent="ActionMenu"]
+layout_mode = 0
+offset_top = 270.0
+offset_right = 180.0
+offset_bottom = 310.0
+text = "Attack"
+
+[node name="CardDatabase" type="Node" parent="."]
+script = ExtResource("5_db")
+
+[node name="DuelManager" type="Node" parent="."]
+script = ExtResource("4_duel")
+
+[node name="PhaseManager" type="Node" parent="."]
+script = ExtResource("8_g7aug")
+
+[node name="TurnManager" type="Node" parent="."]
+script = ExtResource("9_4erxn")
+
+[node name="NextPhaseButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 899.0
+offset_top = 506.0
+offset_right = 995.0
+offset_bottom = 537.0
+text = "Next Phase"
+
+[connection signal="pressed" from="ActionMenu/NormalButton" to="ActionMenu" method="_on_NormalButton_pressed"]
+[connection signal="pressed" from="ActionMenu/SetButton" to="ActionMenu" method="_on_SetButton_pressed"]
+[connection signal="pressed" from="ActionMenu/ActivateButton" to="ActionMenu" method="_on_ActivateButton_pressed"]
+[connection signal="pressed" from="ActionMenu/SetSpellButton" to="ActionMenu" method="_on_SetSpellButton_pressed"]
+[connection signal="pressed" from="ActionMenu/PosChangeButton" to="ActionMenu" method="_on_pos_change_button_pressed"]
+[connection signal="pressed" from="ActionMenu/FlipSummonButton" to="ActionMenu" method="_on_flip_summon_button_pressed"]
+[connection signal="pressed" from="ActionMenu/AttackButton" to="ActionMenu" method="_on_attack_button_pressed"]
+[connection signal="pressed" from="NextPhaseButton" to="DuelManager" method="_on_next_phase_button_pressed"]

@@ -1,0 +1,336 @@
+[gd_scene load_steps=6 format=3 uid="uid://byjlb4h4al0o7"]
+
+[ext_resource type="Texture2D" uid="uid://crtf5v70yi1ot" path="res://art/Board/photo-stone-texture-pattern.jpg" id="1_qbrmr"]
+[ext_resource type="Texture2D" uid="uid://bsel6am53ruwn" path="res://art/Board/board_zone_overlay2.png" id="2_o3x72"]
+[ext_resource type="Script" path="res://scripts/zones/zone_visual.gd" id="3_lqqgp"]
+[ext_resource type="Script" path="res://scripts/duel/duel_manager.gd" id="4_s5j1s"]
+[ext_resource type="Script" path="res://scripts/cards/GoatCarddatabase.gd" id="5_g7nwx"]
+
+[node name="main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.00532, 1.00647)
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("1_qbrmr")
+
+[node name="Board" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_o3x72")
+
+[node name="PlayerSpell1" type="Control" parent="Board"]
+custom_minimum_size = Vector2(120, 0)
+anchors_preset = 0
+offset_left = 300.0
+offset_top = 690.0
+offset_right = 500.0
+offset_bottom = 840.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerSpell1"
+
+[node name="PlayerSpell2" type="Control" parent="Board"]
+custom_minimum_size = Vector2(120, 150)
+anchors_preset = 0
+offset_left = 580.0
+offset_top = 690.0
+offset_right = 780.0
+offset_bottom = 840.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerSpell2"
+
+[node name="PlayerSpell3" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 860.0
+offset_top = 690.0
+offset_right = 1060.0
+offset_bottom = 840.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerSpell3"
+
+[node name="PlayerSpell4" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1140.0
+offset_top = 690.0
+offset_right = 1340.0
+offset_bottom = 840.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerSpell4"
+
+[node name="PlayerSpell5" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1420.0
+offset_top = 690.0
+offset_right = 1620.0
+offset_bottom = 840.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerSpell5"
+
+[node name="PlayerMonster1" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 300.0
+offset_top = 540.0
+offset_right = 500.0
+offset_bottom = 690.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerMonster1"
+
+[node name="PlayerMonster2" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 580.0
+offset_top = 540.0
+offset_right = 780.0
+offset_bottom = 690.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerMonster2"
+
+[node name="PlayerMonster3" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 860.0
+offset_top = 540.0
+offset_right = 1060.0
+offset_bottom = 690.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerMonster3"
+
+[node name="PlayerMonster4" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1140.0
+offset_top = 540.0
+offset_right = 1340.0
+offset_bottom = 690.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerMonster4"
+
+[node name="PlayerMonster5" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1420.0
+offset_top = 540.0
+offset_right = 1620.0
+offset_bottom = 690.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerMonster5"
+
+[node name="EnemyMonster1" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 410.0
+offset_top = 380.0
+offset_right = 610.0
+offset_bottom = 530.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemyMonster1"
+is_player = false
+
+[node name="EnemyMonster2" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 650.0
+offset_top = 380.0
+offset_right = 850.0
+offset_bottom = 530.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemyMonster2"
+is_player = false
+
+[node name="EnemyMonster3" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 880.0
+offset_top = 380.0
+offset_right = 1080.0
+offset_bottom = 530.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemyMonster3"
+is_player = false
+
+[node name="EnemyMonster4" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1120.0
+offset_top = 380.0
+offset_right = 1320.0
+offset_bottom = 530.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemyMonster4"
+is_player = false
+
+[node name="EnemyMonster5" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1320.0
+offset_top = 380.0
+offset_right = 1520.0
+offset_bottom = 530.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemyMonster5"
+is_player = false
+
+[node name="EnemySpell1" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1320.0
+offset_top = 240.0
+offset_right = 1520.0
+offset_bottom = 390.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemySpell1"
+is_player = false
+
+[node name="EnemySpell2" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1100.0
+offset_top = 240.0
+offset_right = 1300.0
+offset_bottom = 390.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemySpell2"
+is_player = false
+
+[node name="EnemySpell3" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 880.0
+offset_top = 240.0
+offset_right = 1080.0
+offset_bottom = 390.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemySpell3"
+is_player = false
+
+[node name="EnemySpell4" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 640.0
+offset_top = 240.0
+offset_right = 840.0
+offset_bottom = 390.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemySpell4"
+is_player = false
+
+[node name="EnemySpell5" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 420.0
+offset_top = 240.0
+offset_right = 620.0
+offset_bottom = 390.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemySpell5"
+is_player = false
+
+[node name="EnemyDeck" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 250.0
+offset_top = 200.0
+offset_right = 450.0
+offset_bottom = 350.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemyDeck"
+is_player = false
+
+[node name="EnemyGY" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 220.0
+offset_top = 350.0
+offset_right = 420.0
+offset_bottom = 500.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemyGY"
+is_player = false
+
+[node name="EnemyExtra" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1450.0
+offset_top = 270.0
+offset_right = 1650.0
+offset_bottom = 420.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemyExtra"
+is_player = false
+
+[node name="EnemyBanished" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 180.0
+offset_top = 450.0
+offset_right = 380.0
+offset_bottom = 600.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemyBanished"
+is_player = false
+
+[node name="EnemyField" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1500.0
+offset_top = 350.0
+offset_right = 1700.0
+offset_bottom = 500.0
+script = ExtResource("3_lqqgp")
+zone_name = "EnemyFieldSpell"
+is_player = false
+
+[node name="PlayerDeck" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1750.0
+offset_top = 780.0
+offset_right = 1950.0
+offset_bottom = 930.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerDeck"
+
+[node name="PlayerGY" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1680.0
+offset_top = 610.0
+offset_right = 1880.0
+offset_bottom = 760.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerGY"
+
+[node name="PlayerExtra" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1.0
+offset_top = 780.0
+offset_right = 201.0
+offset_bottom = 930.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerExtra"
+
+[node name="PlayerBanished" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 1600.0
+offset_top = 470.0
+offset_right = 1800.0
+offset_bottom = 620.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerBanished"
+
+[node name="PlayerField" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 50.0
+offset_top = 610.0
+offset_right = 250.0
+offset_bottom = 760.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerFieldSpell"
+
+[node name="PlayerHand" type="Control" parent="Board"]
+anchors_preset = 0
+offset_left = 500.0
+offset_top = 500.0
+offset_right = 1200.0
+offset_bottom = 680.0
+script = ExtResource("3_lqqgp")
+zone_name = "PlayerHand"
+
+[node name="CardDatabase" type="Node" parent="."]
+script = ExtResource("5_g7nwx")
+
+[node name="DuelManager" type="Node" parent="."]
+script = ExtResource("4_s5j1s")

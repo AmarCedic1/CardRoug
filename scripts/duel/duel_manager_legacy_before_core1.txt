@@ -1,0 +1,342 @@
+extends Node
+class_name DuelManager
+
+# --- CONFIG ---
+const PLAYER_MONSTER_ZONE_PREFIX := "PlayerMonster"
+const PLAYER_SPELL_ZONE_PREFIX   := "PlayerSpell"
+const PLAYER_MONSTER_ZONE_COUNT  := 5
+const PLAYER_SPELL_ZONE_COUNT    := 5
+
+# ACTION CONSTANTS
+const ACTION_NORMAL_SUMMON  : StringName = &"normal_summon"
+const ACTION_SET_MONSTER    : StringName = &"set_monster"
+const ACTION_ACTIVATE_SPELL : StringName = &"activate_spell"
+const ACTION_SET_SPELL      : StringName = &"set_spell"
+const ACTION_POS_CHANGE   : StringName = &"position_change"
+const ACTION_FLIP_SUMMON  : StringName = &"flip_summon"
+
+# --- GAME STATE ---
+var zones: Dictionary = {}
+var player_zones: Dictionary = {}
+var enemy_zones: Dictionary = {}
+
+var player_deck: Array[int] = []
+var player_hand: Array[Dictionary] = []
+
+# Manager References
+var phase_manager: PhaseManager
+var turn_manager: TurnManager
+
+var current_phase: StringName = ""
+
+# SIGNALS
+signal phase_changed(phase: StringName, player_turn: bool)
+
+# -------------------------------------------------------------------
+# READY
+# -------------------------------------------------------------------
+func _ready() -> void:
+    print("DuelManager ready")
+
+    await get_tree().process_frame
+
+    phase_manager = get_node_or_null("../PhaseManager") as PhaseManager
+    turn_manager = get_node_or_null("../TurnManager") as TurnManager
+    var db: GoatCarddatabase = get_node_or_null("../CardDatabase") as GoatCarddatabase
+
+    if db == null:
+        push_error("CardDatabase nicht gefunden.")
+        return
+
+    print("GOAT cards:", db.cards.size())
+
+    # --- BUILD DECK ---
+    build_deck()
+
+    # --- START HAND (5 cards) ---
+    for i in range(5):
+        var card = draw_card()
+        if card != null and card is Dictionary:
+            add_card_to_hand(card)
+
+    print("Starthand:", player_hand.size())
+
+    # --- START TURN ---
+    set_current_phase(PhaseManager.PHASE_DRAW)
+    draw_start_of_turn()
+
+
+# -------------------------------------------------------------------
+# TURN & PHASE CONTROL
+# -------------------------------------------------------------------
+func start_player_turn() -> void:
+    turn_manager.next_turn()
+    phase_manager.start_turn()
+    set_current_phase(phase_manager.current_phase)
+
+func set_current_phase(phase: StringName) -> void:
+    current_phase = phase
+    emit_signal("phase_changed", phase, turn_manager.turn_player)
+    print("Phase:", phase)
+
+
+
+func next_phase() -> void:
+    var new_phase: StringName = phase_manager.next_phase()
+    set_current_phase(new_phase)
+
+
+
+# -------------------------------------------------------------------
+# DECK SYSTEM
+# -------------------------------------------------------------------
+func build_deck() -> void:
+    var db: GoatCarddatabase = get_node_or_null("../CardDatabase") as GoatCarddatabase
+    if db == null:
+        push_error("CardDatabase nicht gefunden.")
+        return
+
+    var all_ids = db.cards.keys()  # api_id list
+    all_ids.shuffle()
+
+    player_deck.clear()
+
+    var max_cards = min(40, all_ids.size())
+    for i in range(max_cards):
+        player_deck.append(int(all_ids[i]))
+
+    print("Deck gebaut:", player_deck.size(), "Karten")
+
+func draw_card() -> Variant:
+    if player_deck.is_empty():
+        return null
+
+    var api_id: int = player_deck.pop_back()
+    var db: GoatCarddatabase = get_node_or_null("../CardDatabase") as GoatCarddatabase
+    if db == null:
+        return null
+
+    var card = db.get_card_by_id(api_id)
+    return card
+
+func add_card_to_hand(card_data: Dictionary) -> void:
+    var ui_scene: PackedScene = load("res://ui/card_ui.tscn")
+    var ui: CardUI = ui_scene.instantiate()
+
+    ui.set_card(card_data)
+
+    var hand_zone: Control = zones.get("PlayerHand")
+    if hand_zone == null:
+        push_warning("PlayerHand Zone fehlt.")
+        return
+
+    hand_zone.add_child(ui)
+
+    var i = hand_zone.get_child_count() - 1
+    ui.position = Vector2(20 + i * 150, 0)
+
+    player_hand.append(card_data)
+
+# -------------------------------------------------------------------
+# ACTION SYSTEM (Summon, Set, Activate)
+# -------------------------------------------------------------------
+func normal_summon(card_ui: CardUI) -> void:
+    if not _can_execute_action(card_ui, ACTION_NORMAL_SUMMON):
+        return
+
+    if not turn_manager.can_normal_summon():
+        push_warning("Normal Summon bereits benutzt.")
+        return
+
+    var zone := _get_first_free_zone(PLAYER_MONSTER_ZONE_PREFIX, PLAYER_MONSTER_ZONE_COUNT)
+    if zone == null:
+        push_warning("Keine freie Monsterzone.")
+        return
+
+    _move_card_to_zone(card_ui, zone)
+    card_ui.in_attack_position = true
+    card_ui.update_stats()
+
+    turn_manager.use_normal_summon()
+
+func set_summon(card_ui: CardUI) -> void:
+    if not _can_execute_action(card_ui, ACTION_SET_MONSTER):
+        return
+    var zone := _get_first_free_zone(PLAYER_MONSTER_ZONE_PREFIX, PLAYER_MONSTER_ZONE_COUNT)
+    if zone == null:
+        push_warning("Keine freie Monsterzone verfügbar.")
+        return
+    _move_card_to_zone(card_ui, zone)
+    card_ui.in_attack_position = false
+    card_ui.set_face_up(false)   # neu: verdeckt setzen
+    card_ui.update_stats()
+
+
+func activate_spell(card_ui: CardUI) -> void:
+    if not _can_execute_action(card_ui, ACTION_ACTIVATE_SPELL):
+        return
+
+    var zone := _get_first_free_zone(PLAYER_SPELL_ZONE_PREFIX, PLAYER_SPELL_ZONE_COUNT)
+    if zone == null:
+        push_warning("Keine freie Spell-Zone.")
+        return
+
+    _move_card_to_zone(card_ui, zone)
+
+func set_spell(card_ui: CardUI) -> void:
+    if not _can_execute_action(card_ui, ACTION_SET_SPELL):
+        return
+
+    var zone := _get_first_free_zone(PLAYER_SPELL_ZONE_PREFIX, PLAYER_SPELL_ZONE_COUNT)
+    if zone == null:
+        push_warning("Keine freie Spell-Zone.")
+        return
+
+    _move_card_to_zone(card_ui, zone)
+
+# -------------------------------------------------------------------
+# ACTION VALIDATION
+# -------------------------------------------------------------------
+func get_available_actions(card_ui: CardUI) -> Array[StringName]:
+    var actions: Array[StringName] = []
+
+    if not _is_card_in_player_hand(card_ui):
+        return actions
+
+    var ctype := str(card_ui.card_data.get("card_type", ""))
+
+    if ctype == "monster":
+        if _has_free_zone(PLAYER_MONSTER_ZONE_PREFIX, PLAYER_MONSTER_ZONE_COUNT) and _is_card_in_player_hand(card_ui):
+            actions.append(ACTION_NORMAL_SUMMON)
+            actions.append(ACTION_SET_MONSTER)
+
+        # Position ändern und Flip nur, wenn die Karte bereits im Feld liegt
+        if _is_card_on_field(card_ui):
+            # in Main-Phasen erlaubt
+            if current_phase == PhaseManager.PHASE_MAIN_1 or current_phase == PhaseManager.PHASE_MAIN_2:
+                actions.append(ACTION_POS_CHANGE)
+                # Flip nur, wenn verdeckt
+                if not card_ui.face_up:
+                    actions.append(ACTION_FLIP_SUMMON)
+
+    elif ctype == "spell" or ctype == "trap":
+        if _has_free_zone(PLAYER_SPELL_ZONE_PREFIX, PLAYER_SPELL_ZONE_COUNT):
+            actions.append(ACTION_ACTIVATE_SPELL)
+            actions.append(ACTION_SET_SPELL)
+
+    return actions
+
+
+
+
+func _has_free_zone(prefix: String, zone_count: int) -> bool:
+    return _get_first_free_zone(prefix, zone_count) != null
+
+func _get_first_free_zone(prefix: String, zone_count: int) -> Control:
+    for i in range(1, zone_count + 1):
+        var name = "%s%d" % [prefix, i]
+        var zone: Control = zones.get(name)
+        if zone != null and zone.get_child_count() == 0:
+            return zone
+    return null
+
+func _is_card_in_player_hand(card_ui: CardUI) -> bool:
+    return card_ui.get_parent() != null and card_ui.get_parent().name == "PlayerHand"
+
+# -------------------------------------------------------------------
+# CARD MOVEMENT
+# -------------------------------------------------------------------
+func _move_card_to_zone(card_ui: CardUI, zone: Control) -> void:
+    var p = card_ui.get_parent()
+    if p: p.remove_child(card_ui)
+
+    zone.add_child(card_ui)
+    card_ui.position = Vector2.ZERO
+
+# -------------------------------------------------------------------
+# CLICK HANDLER
+# -------------------------------------------------------------------
+func on_card_clicked(card_ui: CardUI) -> void:
+    if not _is_card_in_player_hand(card_ui):
+        return
+
+    var menu: ActionMenu = get_tree().root.get_node("main/ActionMenu")
+    var actions = get_available_actions(card_ui)
+
+    menu.set_available_actions(actions)
+    if actions.is_empty():
+        menu.close()
+        return
+
+    menu.open(card_ui, card_ui.get_global_position() + Vector2(80, 0))
+func register_zone(zone_name: String, zone_node: Node, is_player: bool) -> void:
+    zones[zone_name] = zone_node
+    if is_player:
+        player_zones[zone_name] = zone_node
+    else:
+        enemy_zones[zone_name] = zone_node
+    print("Zone registriert:", zone_name)
+func draw_start_of_turn() -> void:
+    if current_phase != PhaseManager.PHASE_DRAW:
+        return
+    var card = draw_card()
+    if card != null and card is Dictionary:
+        add_card_to_hand(card)
+    # automatisch weiter zu STANDBY -> MAIN1
+    next_phase()
+    next_phase()
+func _on_next_phase_pressed() -> void:
+    if current_phase == PhaseManager.PHASE_END:
+        start_player_turn()
+        set_current_phase(PhaseManager.PHASE_DRAW)
+        draw_start_of_turn()
+        return
+    var new_phase: StringName = phase_manager.next_phase()
+    set_current_phase(new_phase)
+    if new_phase == PhaseManager.PHASE_DRAW:
+        draw_start_of_turn()
+func _can_execute_action(card_ui: CardUI, action: StringName) -> bool:
+    if current_phase != PhaseManager.PHASE_MAIN_1 and current_phase != PhaseManager.PHASE_MAIN_2:
+        return false
+    var available_actions: Array[StringName] = get_available_actions(card_ui)
+    return available_actions.has(action)
+
+
+
+func _on_next_phase_button_pressed():
+    pass # Replace with function body.
+func _is_card_on_field(card_ui: CardUI) -> bool:
+    if card_ui == null or card_ui.get_parent() == null:
+        return false
+    var p := card_ui.get_parent().name
+    return p.begins_with("PlayerMonster") or p.begins_with("EnemyMonster") or p.begins_with("PlayerSpell") or p.begins_with("EnemySpell")
+func position_change(card_ui: CardUI) -> void:
+    if card_ui == null:
+        return
+    # nur Monster, nur Feld, nur Main
+    if not _is_card_on_field(card_ui):
+        return
+    if current_phase != PhaseManager.PHASE_MAIN_1 and current_phase != PhaseManager.PHASE_MAIN_2:
+        return
+
+    card_ui.in_attack_position = not card_ui.in_attack_position
+    card_ui.update_stats()
+
+func flip_summon(card_ui: CardUI) -> void:
+    if card_ui == null:
+        return
+    # nur Monster, nur Feld, nur wenn verdeckt und in Main
+    if not _is_card_on_field(card_ui):
+        return
+    if card_ui.face_up:
+        return
+    if current_phase != PhaseManager.PHASE_MAIN_1 and current_phase != PhaseManager.PHASE_MAIN_2:
+        return
+
+    card_ui.set_face_up(true)
+    card_ui.in_attack_position = true
+    card_ui.update_stats()
+
+
+func _on_flip_summon_button_pressed():
+    pass # Replace with function body.
